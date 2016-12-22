@@ -64,6 +64,8 @@ static unsigned int kill_process_group = 0;
 
 static struct timespec ts = { .tv_sec = 1, .tv_nsec = 0 };
 
+#define VALID_CHILD_EXIT_CODES "TINI_VALID_CHILD_EXIT_CODES"
+
 static const char reaper_warning[] = "Tini is not running as PID 1 "
 #if HAS_SUBREAPER
        "and isn't registered as a child subreaper"
@@ -549,6 +551,20 @@ int main(int argc, char *argv[]) {
 
 		if (child_exitcode != -1) {
 			PRINT_TRACE("Exiting: child has exited");
+			char* valid_child_exit_codes_env = getenv(VALID_CHILD_EXIT_CODES);
+			if (valid_child_exit_codes_env != NULL) {
+				char* valid_child_exit_codes = strdup(valid_child_exit_codes_env);
+				char* to_free = valid_child_exit_codes;
+				char* code_string;
+				while ((code_string = strsep(&valid_child_exit_codes, ",")) != NULL) {
+					if (child_exitcode == atoi(code_string)) {
+						PRINT_TRACE("Found mapping for exit code. Exit with 0");
+						child_exitcode = 0;
+						break;
+					}
+				}
+				free(to_free);
+			}
 			return child_exitcode;
 		}
 	}
